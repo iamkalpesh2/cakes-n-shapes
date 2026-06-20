@@ -71,7 +71,7 @@ export default function Home() {
       `Hi Cakes n' Shapes! I saw the beautiful "${cakeTitle}" on your website catalog and would love to discuss custom sizing, flavor availability, and pricing options for an upcoming event.`
     );
     // Replace with your client's genuine WhatsApp contact number when ready for deployment
-    window.open(`https://wa.me/919869600562?text=${message}`, '_blank'); 
+    window.open(`https://wa.me/919869600561?text=${message}`, '_blank'); 
   };
 
   return (
