@@ -1,255 +1,77 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 
-// 1. DATA CONFIGURATION & METADATA FOR THE AUTOMATED LOOP
-const CATEGORIES = ['all', 'custom-shapes', 'birthdays', 'wedding-anniversary', 'cupcakes-hampers'] as const;
+type Filter = 'all' | 'cakes' | 'cupcakes' | 'jar-cakes' | 'brownies' | 'popsicles' | 'hampers';
+type Product = { name: string; category: Exclude<Filter, 'all'>; tag: string; description: string; image: string };
 
-const FLAVOR_COMBOS = [
-  ['Belgian Chocolate Truffle', 'Dark Ganache'],
-  ['Classic Red Velvet', 'Cream Cheese Frosting'],
-  ['Vanilla Bean Mascarpone', 'Fresh Berries'],
-  ['Salted Caramel', 'Toasted Hazelnut Crunch'],
-  ['Lotus Biscoff Premium', 'White Chocolate'],
-  ['Almond Praline', 'Rich Espresso Cream']
+const whatsappLink = 'https://wa.me/919869600561';
+const categories: { icon: string; title: string; detail: string; filter: Filter }[] = [
+  { icon: '🍰', title: 'All', detail: 'Our full menu', filter: 'all' },
+  { icon: '🎂', title: 'Cakes', detail: 'Signature & custom', filter: 'cakes' },
+  { icon: '🧁', title: 'Cupcakes', detail: 'Perfect for sharing', filter: 'cupcakes' },
+  { icon: '🥄', title: 'Jar Cakes', detail: 'Layered goodness', filter: 'jar-cakes' },
+  { icon: '🍫', title: 'Brownies', detail: 'Fudgy favourites', filter: 'brownies' },
+  { icon: '🍭', title: 'Popsicles', detail: 'Cute & fun', filter: 'popsicles' },
+];
+const products: Product[] = [
+  { name: 'Chocolate Truffle Cake', category: 'cakes', tag: 'Bestseller', description: 'Rich chocolate sponge, ganache and a classic celebration finish.', image: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=700&q=80' },
+  { name: 'Red Velvet Cake', category: 'cakes', tag: 'Popular', description: 'Soft red velvet layers with creamy frosting for elegant celebrations.', image: 'https://images.unsplash.com/photo-1586788680434-30d324b2d46f?auto=format&fit=crop&w=700&q=80' },
+  { name: 'Custom Theme Cake', category: 'cakes', tag: 'Custom', description: 'Your theme, colours and ideas turned into an edible centrepiece.', image: 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=700&q=80' },
+  { name: 'Bento Cake', category: 'cakes', tag: 'Cute', description: 'Small celebration cakes made for intimate moments and gifting.', image: 'https://images.unsplash.com/photo-1557925923-cd4648e211a0?auto=format&fit=crop&w=700&q=80' },
+  { name: 'Assorted Cupcakes', category: 'cupcakes', tag: 'Party Pick', description: 'A box of pretty, shareable cupcakes in your preferred flavours.', image: 'https://images.unsplash.com/photo-1519869325930-281384150729?auto=format&fit=crop&w=700&q=80' },
+  { name: 'Chocolate Jar Cake', category: 'jar-cakes', tag: 'Favourite', description: 'Layers of cake, cream and chocolate packed into a convenient jar.', image: 'https://images.unsplash.com/photo-1571115177098-24ec42ed204d?auto=format&fit=crop&w=700&q=80' },
+  { name: 'Fudgy Chocolate Brownie', category: 'brownies', tag: 'Rich & Fudgy', description: 'Deep chocolate brownies made for gifting, sharing or keeping all to yourself.', image: 'https://images.unsplash.com/photo-1564355808539-22fda35bed7e?auto=format&fit=crop&w=700&q=80' },
+  { name: 'Cake Popsicles', category: 'popsicles', tag: 'Fun', description: 'Cute cake popsicles that add a playful touch to any celebration.', image: 'https://images.unsplash.com/photo-1576618148400-f54bed99fcfd?auto=format&fit=crop&w=700&q=80' },
+  { name: 'Celebration Hamper', category: 'hampers', tag: 'Gift Ready', description: 'A curated mix of sweet treats for birthdays, festivals and gifting.', image: 'https://images.unsplash.com/photo-1549007994-cb92caebd54b?auto=format&fit=crop&w=700&q=80' },
+  { name: 'Brownie & Treat Box', category: 'hampers', tag: 'Giftable', description: 'A thoughtful box combining brownies and bite-sized treats.', image: 'https://images.unsplash.com/photo-1606890737304-57a1ca8a5b62?auto=format&fit=crop&w=700&q=80' },
+];
+const occasions = [
+  ['Birthday', 'Cakes, cupcakes & more', 'https://images.unsplash.com/photo-1535254973040-607b474cb50d?auto=format&fit=crop&w=700&q=80'],
+  ['Anniversary', 'Sweet & elegant', 'https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?auto=format&fit=crop&w=700&q=80'],
+  ['Baby Shower', 'Pretty celebration bakes', 'https://images.unsplash.com/photo-1558636508-e0db3814bd1d?auto=format&fit=crop&w=700&q=80'],
+  ['Thank You', 'Thoughtful little gifts', 'https://images.unsplash.com/photo-1549007994-cb92caebd54b?auto=format&fit=crop&w=700&q=80'],
+  ['Festivals & Gifting', 'Hampers & sweet boxes', 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=700&q=80'],
 ];
 
-const DESCRIPTIONS = [
-  "A masterpiece designed completely around your celebration theme with immaculate structural execution.",
-  "Elegantly finished with minimal luxury textures, subtle pastel tones, and completely customized formatting.",
-  "Crafted with hand-piped artisanal details, ultra-smooth premium crumb coat, and layers of rich flavor.",
-  "Perfect for milestone moments. Features clean structural scaling, bold artistic geometry, and divine taste.",
-  "An exquisite selection meticulously baked to elevate your party aesthetic and deliver an unmatched dessert experience."
-];
-
-// 2. DYNAMICALLY GENERATING CATALOG ITEMS MATCHING YOUR 42 PARSED IMAGES
-const CAKE_CATALOG = Array.from({ length: 42 }, (_, index) => {
-  const fileNumber = index + 1; // Maps perfectly to /catalog/cake_1.jpg -> cake_42.jpg
-  
-  // Deterministic math arrays to keep data structure stable on hot-reloads
-  // Using categories 1 to 4 so 'all' remains purely a master functional filter
-  const categoryIndex = 1 + ((fileNumber * 3) % (CATEGORIES.length - 1)); 
-  const flavorIndex = (fileNumber * 7) % FLAVOR_COMBOS.length;
-  const descIndex = (fileNumber * 2) % DESCRIPTIONS.length;
-  
-  const selectedCategory = CATEGORIES[categoryIndex];
-  
-  // Dynamic Pricing Tier assignments based on structural categories
-  let basePrice = 1200;
-  if (selectedCategory === 'custom-shapes') basePrice = 1800;
-  if (selectedCategory === 'wedding-anniversary') basePrice = 2200;
-  if (selectedCategory === 'cupcakes-hampers') basePrice = 650;
-
-  const prettyCategoryName = selectedCategory
-    .split('-')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-  
-  return {
-    id: `cake-${fileNumber}`,
-    title: `Premium ${prettyCategoryName} Design #${100 + fileNumber}`,
-    category: selectedCategory,
-    price: basePrice + ((fileNumber * 50) % 400), // Adds organic pricing variety
-    image: `/catalog/cake_${fileNumber}.jpg`,     // Direct link matching your Python download pipeline
-    description: DESCRIPTIONS[descIndex],
-    flavors: FLAVOR_COMBOS[flavorIndex]
-  };
-});
+function messageFor(text: string) { return `${whatsappLink}?text=${encodeURIComponent(text)}`; }
+function ProductCard({ product }: { product: Product }) {
+  return <article className="product"><div className="product-image"><img src={product.image} alt={product.name} loading="lazy" /><span className="badge">{product.tag}</span></div><div className="product-body"><h3>{product.name}</h3><p>{product.description}</p><div className="product-footer"><strong>Ask price</strong><a className="product-button" href={messageFor(`Hi Rinku! I'm interested in the "${product.name}" from Cakes n' Shapes. Please share flavours, sizes, price and availability.`)} target="_blank" rel="noreferrer">WhatsApp</a></div></div></article>;
+}
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<typeof CATEGORIES[number]>('all');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<Filter>('all');
+  const [search, setSearch] = useState('');
+  const filteredProducts = products.filter((product) => {
+    const searchable = `${product.name} ${product.description} ${product.category}`.toLowerCase();
+    return (activeFilter === 'all' || product.category === activeFilter) && searchable.includes(search.toLowerCase().trim());
+  });
+  const selectFilter = (filter: Filter) => { setActiveFilter(filter); document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+  const navItems = [['shop', 'Shop'], ['occasions', 'Occasions'], ['story', 'Our Story'], ['order', 'How to Order'], ['faq', 'FAQ']];
+  const reviews = ['Beautifully made, personal and perfect for celebrations. The best part is being able to discuss exactly what we want.', 'A home-baked feel with designs made specially for the occasion. Everything feels thoughtful.', 'From choosing the flavour to the final design, the WhatsApp ordering makes the process simple.'];
+  const faqs = [["Where is Cakes n' Shapes located?", "Cakes n' Shapes is a home bakery based in Dahisar, Mumbai."], ['How do I place an order?', 'Choose a product on this website and use the WhatsApp button. Discuss the date, flavour, size, design and availability directly.'], ['Can I customise a cake?', 'Yes. Share your theme, reference image, flavour and size requirements on WhatsApp and Rinku can guide you.'], ['Do you make hampers?', 'Yes. Hampers can be explored for birthdays, festivals, thank-you gifting and other occasions.']];
 
-  // Filter functionality block
-  const filteredCakes = activeTab === 'all' 
-    ? CAKE_CATALOG 
-    : CAKE_CATALOG.filter(cake => cake.category === activeTab);
-
-  // Conversion-focused WhatsApp routing mechanism
-  const handleWhatsAppOrder = (cakeTitle: string) => {
-    const message = encodeURIComponent(
-      `Hi Cakes n' Shapes! I saw the beautiful "${cakeTitle}" on your website catalog and would love to discuss custom sizing, flavor availability, and pricing options for an upcoming event.`
-    );
-    // Replace with your client's genuine WhatsApp contact number when ready for deployment
-    window.open(`https://wa.me/919869600561?text=${message}`, '_blank'); 
-  };
-
-  return (
-    <div className="bg-[#FFFDF9] min-h-screen text-[#4A3728] antialiased">
-      
-      {/* 1. BRAND NAVIGATION HEADER */}
-      <header className="sticky top-0 z-50 bg-[#FFFDF9]/90 backdrop-blur-md border-b border-stone-100 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          
-          {/* Logo Identity Context */}
-          <div className="flex items-center gap-3">
-            <div className="relative w-10 h-10 rounded-full overflow-hidden border border-stone-200">
-              <Image 
-                src="/logo.png" 
-                alt="Cakes n' Shapes Logo" 
-                fill
-                className="object-cover"
-                priority
-              />
-            </div>
-            <span className="font-serif font-medium tracking-wide text-lg text-[#4A3728]">
-              Cakes n&apos; Shapes
-            </span>
-          </div>
-
-          {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-8 text-xs font-semibold tracking-wider uppercase text-stone-600">
-            <a href="#catalog" className="hover:text-[#E8A7A1] transition-colors">The Collection</a>
-            <a 
-              href="https://www.instagram.com/cakes_n_shapes73" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="hover:text-[#E8A7A1] transition-colors"
-            >
-              Instagram Profile
-            </a>
-          </nav>
-
-          {/* Direct Pipeline Call-To-Action */}
-          <div>
-            <button 
-              onClick={() => handleWhatsAppOrder('General Custom Inquiry')}
-              className="border border-[#4A3728] text-[#4A3728] px-5 py-2 rounded-full text-xs font-semibold tracking-wider uppercase hover:bg-[#4A3728] hover:text-white transition-all duration-300"
-            >
-              Inquire Now
-            </button>
-          </div>
-
-        </div>
-      </header>
-
-      {/* 2. HERO STATEMENT BANNER */}
-      <section className="relative h-[80vh] flex items-center justify-center bg-gradient-to-b from-[#FDF0EE] to-[#FFFDF9] px-6 text-center">
-        <div className="max-w-3xl space-y-6">
-          <span className="text-xs tracking-[0.25em] uppercase text-[#E8A7A1] font-semibold">Artisanal Custom Bakery</span>
-          <h1 className="text-5xl md:text-7xl font-serif font-light leading-tight">
-            Where Art Meets <span className="italic font-normal text-[#E8A7A1]">Confectionery</span>
-          </h1>
-          <p className="text-sm md:text-base text-stone-600 max-w-xl mx-auto font-light leading-relaxed">
-            Crafting premium bespoke custom cakes, elegant shapes, and unforgettable flavors for your milestone celebrations.
-          </p>
-          <div className="pt-4">
-            <a 
-              href="#catalog" 
-              className="bg-[#4A3728] text-white px-8 py-3 rounded-full text-xs font-semibold tracking-wider uppercase hover:bg-opacity-90 transition-all duration-300 shadow-md"
-            >
-              Explore Our Catalog
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {/* 3. CATALOUGE CONTEXT & GRID FILTERS */}
-      <section id="catalog" className="max-w-7xl mx-auto px-6 py-24">
-        <div className="flex flex-col lg:flex-row lg:items-end justify-between border-b border-stone-200 pb-8 mb-12">
-          <div>
-            <h2 className="text-3xl font-serif">The Collection</h2>
-            <p className="text-xs text-stone-500 mt-1">Browse our hand-crafted structural selections and design styles</p>
-          </div>
-          
-          {/* Functional Filters Tab Bar */}
-          <div className="flex flex-wrap gap-2 mt-6 lg:mt-0">
-            {CATEGORIES.map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-5 py-2 rounded-full text-xs font-medium tracking-wide transition-all uppercase ${
-                  activeTab === tab 
-                    ? 'bg-[#E8A7A1] text-white shadow-sm' 
-                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                }`}
-              >
-                {tab.replace('-', ' ')}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 4. PRODUCT CARD RENDER ENGINE */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredCakes.map((cake) => (
-            <div 
-              key={cake.id} 
-              className="group bg-white rounded-2xl overflow-hidden border border-stone-100 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col h-full"
-            >
-              {/* Product Visual Container */}
-              <div className="relative aspect-square w-full bg-stone-100 overflow-hidden">
-                <div className="absolute inset-0 bg-black/5 group-hover:bg-black/0 transition-colors z-10" />
-                <Image 
-                  src={cake.image} 
-                  alt={cake.title}
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                  sizes="(max-w-1200px) 33vw, 50vw"
-                />
-              </div>
-
-              {/* Product Copy Block */}
-              <div className="p-6 flex flex-col flex-grow justify-between space-y-4">
-                <div>
-                  <div className="flex justify-between items-start">
-                    <h3 className="font-serif text-lg leading-snug group-hover:text-[#E8A7A1] transition-colors">
-                      {cake.title}
-                    </h3>
-                    <span className="text-sm font-semibold whitespace-nowrap ml-4">
-                      ₹{cake.price}+
-                    </span>
-                  </div>
-                  <p className="text-xs text-stone-500 font-light mt-2 line-clamp-2 leading-relaxed">
-                    {cake.description}
-                  </p>
-                  
-                  {/* Dynamic Custom Ingredients/Flavors Markers */}
-                  <div className="flex flex-wrap gap-1 mt-3">
-                    {cake.flavors.map((flv, idx) => (
-                      <span 
-                        key={idx} 
-                        className="bg-stone-50 border border-stone-200/60 text-[10px] text-stone-600 px-2 py-0.5 rounded"
-                      >
-                        {flv}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Main Conversion CTA Element */}
-                <button 
-                  onClick={() => handleWhatsAppOrder(cake.title)}
-                  className="w-full bg-[#4A3728] text-white py-3 rounded-xl text-xs font-semibold tracking-wider uppercase group-hover:bg-[#E8A7A1] transition-colors duration-300 flex items-center justify-center gap-2 shadow-sm"
-                >
-                  <span>Order / Inquire via WhatsApp</span>
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* 5. BRAND TAILPIECE / CALLOUT SECTION */}
-      <section className="bg-[#FDF0EE] py-20 text-center px-6">
-        <div className="max-w-xl mx-auto space-y-4">
-          <h3 className="font-serif text-2xl">Have a custom design in mind?</h3>
-          <p className="text-xs text-stone-600 font-light leading-relaxed">
-            We specialize in turning complex 3D themes, elegant geometry, and specialized celebratory motifs into delicious realities. Share your references directly to lock in custom configurations.
-          </p>
-          <div className="pt-2">
-            <a 
-              href="https://www.instagram.com/cakes_n_shapes73" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-xs underline tracking-widest uppercase text-[#4A3728] font-semibold hover:text-[#E8A7A1] transition-colors"
-            >
-              Follow Our Journey On Instagram
-            </a>
-          </div>
-        </div>
-      </section>
-
-    </div>
-  );
+  return <>
+    <div className="topbar">Freshly baked in Dahisar, Mumbai · Custom orders via WhatsApp · Cakes n&apos; Shapes since 2021</div>
+    <header className="site-header"><div className="container nav"><a className="logo" href="#home" onClick={() => setMenuOpen(false)}>Cakes n&apos; Shapes<span>Home Bakery · Mumbai</span></a><nav className={menuOpen ? 'nav-links mobile-open' : 'nav-links'}>{navItems.map(([id, label]) => <a key={id} href={`#${id}`} onClick={() => setMenuOpen(false)}>{label}</a>)}</nav><div className="nav-actions"><a className="whatsapp-button" href={messageFor("Hi Cakes n' Shapes! I'd like to explore your cakes.")} target="_blank" rel="noreferrer">WhatsApp Us</a><button className="menu-button" onClick={() => setMenuOpen((open) => !open)} aria-label="Toggle menu">☰</button></div></div></header>
+    <main id="home">
+      <section className="hero"><div className="container hero-grid"><div className="hero-copy"><p className="eyebrow">Small-batch baking · Dahisar, Mumbai</p><h1>Little treats for <em>big moments.</em></h1><p className="hero-description">From celebration cakes to brownies, cupcakes, jar cakes and thoughtful hampers — Cakes n&apos; Shapes turns your occasion into something deliciously memorable.</p><div className="hero-actions"><a className="primary-button" href="#shop">Explore the Menu</a><a className="secondary-button" href={messageFor("Hi Cakes n' Shapes! I need help choosing something for an occasion.")} target="_blank" rel="noreferrer">Tell us your occasion</a></div><div className="hero-note"><span>♡ Made to order</span><span>♡ Home baked</span><span>♡ Mumbai</span></div></div><div className="hero-photo"><img src="https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=1000&q=85" alt="Celebration chocolate cake" /><div className="hero-card"><strong>Baked by Rinku</strong><span>A home-baker&apos;s passion, started in 2021.</span></div></div></div></section>
+      <section className="section"><div className="container"><div className="section-heading"><div><p className="eyebrow">Explore</p><h2>What are you craving?</h2></div><p>Browse by product and jump straight to what you need. Every product can be discussed and customised over WhatsApp.</p></div><div className="category-grid">{categories.map((category) => <button key={category.filter} className={activeFilter === category.filter ? 'category active' : 'category'} onClick={() => selectFilter(category.filter)}><span>{category.icon}</span><strong>{category.title}</strong><small>{category.detail}</small></button>)}</div></div></section>
+      <section className="section shop-section" id="shop"><div className="container"><div className="section-heading"><div><p className="eyebrow">The menu</p><h2>Made for your celebration</h2></div><p>Prices can vary by design, size and customisation. Use the WhatsApp button on any product to enquire.</p></div><div className="controls"><div className="filter-list">{[...categories, { icon: '', title: 'Hampers', detail: '', filter: 'hampers' as Filter }].map((category) => <button key={category.filter} className={activeFilter === category.filter ? 'filter active' : 'filter'} onClick={() => setActiveFilter(category.filter)}>{category.title}</button>)}</div><input className="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search chocolate, red velvet, hamper..." aria-label="Search products" /></div><div className="products">{filteredProducts.length ? filteredProducts.map((product) => <ProductCard key={product.name} product={product} />) : <p className="empty">No products matched that search. Try another flavour or ask us on WhatsApp.</p>}</div></div></section>
+      <section className="story" id="story"><div className="container story-grid"><img src="https://images.unsplash.com/photo-1559622214-f8a9850965e4?auto=format&fit=crop&w=900&q=85" alt="Home baker preparing a cake" /><div><p className="eyebrow">Our story</p><h2>From a home kitchen to your celebrations.</h2><p>Cakes n&apos; Shapes was started by <strong>Rinku Shah</strong> in 2021 with a simple idea: make beautiful, delicious treats that feel personal.</p><p>It began with cakes shared and sold through Facebook Marketplace and the Cakes n&apos; Shapes Facebook page in Mumbai. Since then, the focus has stayed the same — thoughtful baking, personal service and desserts made especially for your moment.</p><p>Today, we&apos;re a home bakery based in Dahisar, Mumbai, taking orders through WhatsApp so every celebration can be discussed directly with the baker.</p><div className="signature">— Rinku Shah</div></div></div></section>
+      <section className="section" id="occasions"><div className="container"><div className="section-heading"><div><p className="eyebrow">Shop by occasion</p><h2>Whatever you&apos;re celebrating</h2></div><p>Choose an occasion and we&apos;ll help you find the right sweet treat or hamper.</p></div><div className="occasion-grid">{occasions.map(([title, detail, image]) => <a key={title} className="occasion" href={messageFor(`Hi Rinku! I'm looking for something from Cakes n' Shapes for a ${title}. Please suggest suitable cakes, treats or hampers.`)} target="_blank" rel="noreferrer"><img src={image} alt="" /><span><strong>{title}</strong><small>{detail}</small></span></a>)}</div></div></section>
+      <section className="section" id="order"><div className="container"><div className="order-panel"><div className="order-copy"><p className="eyebrow">Simple ordering</p><h2>See something you love?</h2><p>We keep ordering personal. Browse the menu, choose a product or share your idea, then continue the conversation on WhatsApp with Rinku.</p><a className="light-button" href={messageFor("Hi Rinku! I'm looking to place an order from Cakes n' Shapes.")} target="_blank" rel="noreferrer">Start a WhatsApp chat →</a></div><div className="steps">{[['1', 'Pick a product', 'Browse cakes, treats or hampers.'], ['2', 'Share your details', 'Tell us date, flavour, size & occasion.'], ['3', 'Confirm on WhatsApp', 'Final price and availability are discussed directly.']].map(([number, title, text]) => <div className="step" key={number}><span className="step-number">{number}</span><strong>{title}</strong><small>{text}</small></div>)}</div></div></div></section>
+      <section className="section"><div className="container"><div className="section-heading single"><div><p className="eyebrow">Why Cakes n&apos; Shapes</p><h2>Made with a little more heart.</h2></div></div><div className="reviews">{reviews.map((review) => <div className="review" key={review}><span className="stars">★★★★★</span><p>“{review}”</p><strong>— Cakes n&apos; Shapes customer</strong></div>)}</div></div></section>
+      <section className="section" id="faq"><div className="container"><div className="section-heading single"><div><p className="eyebrow">Need to know</p><h2>Frequently asked questions</h2></div></div><div className="faq">{faqs.map(([question, answer]) => <details key={question}><summary>{question}</summary><p>{answer}</p></details>)}</div></div></section>
+    </main>
+    <footer><div className="container footer-grid"><div><a className="logo footer-logo" href="#home">Cakes n&apos; Shapes<span>Home Bakery · Mumbai</span></a><p>Custom cakes, cupcakes, jar cakes, brownies, cake popsicles and hampers — baked from a home kitchen in Dahisar, Mumbai.</p></div><div><h4>Explore</h4><a href="#shop">Shop</a><a href="#occasions">Occasions</a><a href="#story">Our Story</a></div><div><h4>Products</h4><a href="#shop">Cakes</a><a href="#shop">Cupcakes</a><a href="#shop">Brownies</a><a href="#shop">Hampers</a></div><div><h4>Contact</h4><a href={whatsappLink} target="_blank" rel="noreferrer">WhatsApp: +91 98696 00561</a><a href="tel:+919869600561">Call us</a><a href="#faq">FAQ</a></div></div><div className="copyright">© 2026 Cakes n&apos; Shapes · Dahisar, Mumbai · Founded by Rinku Shah · All rights reserved.</div></footer>
+    <a className="floating-whatsapp" href={messageFor("Hi Cakes n' Shapes! I'd like to place an order.")} target="_blank" rel="noreferrer" aria-label="WhatsApp">⌕</a>
+    <style jsx global>{`
+      :root{--ink:#2d2d2d;--muted:#6b6b6b;--gold:#d4a017}.site-header{background:rgba(255,255,255,.95)}.hero{background:linear-gradient(135deg,#fff0f5 0%,#fff8f5 50%,#fce4ec 100%)}
+      :root{--pink:#e91e63;--pink-dark:#c2185b;--pink-light:#fce4ec;--cream:#fff8f5;--ink:#2d2528;--muted:#756b70;--line:#eadde2;--gold:#c7954b;--shadow:0 16px 45px rgba(68,35,48,.11)}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--cream);color:var(--ink);font-family:Arial,sans-serif;line-height:1.55}a{text-decoration:none;color:inherit}button,input{font:inherit}.container{width:min(1180px,calc(100% - 40px));margin:auto}.topbar{padding:8px 15px;background:var(--pink-dark);color:#fff;text-align:center;font-size:13px}.site-header{position:sticky;top:0;z-index:10;background:rgba(255,248,245,.94);backdrop-filter:blur(14px);border-bottom:1px solid rgba(233,30,99,.1)}.nav{min-height:76px;display:flex;align-items:center;justify-content:space-between;gap:24px}.logo{color:var(--pink);font:bold 28px Georgia,serif;white-space:nowrap}.logo span{display:block;margin-top:-4px;color:var(--gold);font:600 9px Arial,sans-serif;letter-spacing:2px;text-transform:uppercase}.nav-links{display:flex;align-items:center;gap:27px;font-size:14px;font-weight:700}.nav-links a:hover{color:var(--pink)}.nav-actions{display:flex;align-items:center;gap:10px}.whatsapp-button,.primary-button,.product-button{display:inline-block;border:0;border-radius:999px;background:var(--pink);color:#fff;padding:12px 20px;font-weight:700;transition:.2s}.whatsapp-button:hover,.primary-button:hover,.product-button:hover{background:var(--pink-dark);transform:translateY(-1px)}.menu-button{display:none;border:1px solid var(--line);border-radius:50%;width:42px;height:42px;background:#fff;color:var(--pink);cursor:pointer}.hero{padding:34px 0 55px}.hero-grid{display:grid;grid-template-columns:1.03fr .97fr;gap:44px;align-items:center}.eyebrow{margin:0 0 13px;color:var(--pink-dark);font-size:12px;font-weight:800;letter-spacing:2px;text-transform:uppercase}.hero h1{max-width:650px;margin:0;font:600 clamp(42px,5.2vw,72px)/1.02 Georgia,serif}.hero h1 em{font-style:normal;color:var(--pink)}.hero-description{max-width:570px;margin:22px 0 28px;color:var(--muted);font-size:17px}.hero-actions{display:flex;gap:12px;flex-wrap:wrap}.secondary-button{display:inline-block;padding:11px 21px;border:1px solid var(--pink);border-radius:999px;color:var(--pink-dark);font-weight:700}.hero-note{display:flex;gap:18px;margin-top:26px;color:var(--muted);font-size:12px}.hero-photo{position:relative}.hero-photo>img{width:100%;height:530px;object-fit:cover;border-radius:28px;box-shadow:var(--shadow)}.hero-card{position:absolute;left:20px;bottom:20px;max-width:230px;padding:15px 18px;background:#fff;border-radius:15px;box-shadow:var(--shadow)}.hero-card strong{display:block;font:18px Georgia,serif}.hero-card span{color:var(--muted);font-size:12px}.section{padding:65px 0}.section-heading{display:flex;justify-content:space-between;align-items:end;gap:20px;margin-bottom:28px}.section-heading h2,.story h2,.order-panel h2{margin:0;font:600 clamp(28px,3vw,40px) Georgia,serif}.section-heading>p{max-width:540px;margin:0;color:var(--muted);font-size:14px}.section-heading.single{display:block}.category-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}.category{padding:20px 12px;border:1px solid var(--line);border-radius:18px;background:#fff;text-align:center;cursor:pointer;transition:.2s}.category:hover,.category.active{border-color:var(--pink);box-shadow:0 8px 25px rgba(233,30,99,.12);transform:translateY(-3px)}.category span{display:block;margin-bottom:8px;font-size:30px}.category strong{display:block;font-size:14px}.category small{display:block;margin-top:3px;color:var(--muted);font-size:11px}.shop-section{padding-top:15px}.controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 25px}.filter-list{display:flex;gap:10px;flex-wrap:wrap}.filter{padding:9px 15px;border:1px solid var(--line);border-radius:999px;background:#fff;font-size:13px;font-weight:700;cursor:pointer}.filter.active{border-color:var(--pink);background:var(--pink);color:#fff}.search{min-width:250px;margin-left:auto;padding:10px 15px;border:1px solid var(--line);border-radius:999px;outline:none;background:#fff}.products{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}.product{display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--line);border-radius:18px;background:#fff;transition:.2s}.product:hover{transform:translateY(-4px);box-shadow:var(--shadow)}.product-image{height:245px;position:relative;background:var(--pink-light)}.product-image img{width:100%;height:100%;object-fit:cover}.badge{position:absolute;top:12px;left:12px;padding:6px 10px;border-radius:999px;background:#fff;color:var(--pink-dark);font-size:10px;font-weight:800}.product-body{display:flex;flex:1;flex-direction:column;padding:16px}.product-body h3{margin:0;font:600 21px Georgia,serif}.product-body p{min-height:38px;margin:7px 0 12px;color:var(--muted);font-size:12px}.product-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;padding-top:5px}.product-footer strong{color:var(--pink-dark);font-size:14px}.product-button{padding:9px 13px;font-size:12px}.empty{grid-column:1/-1;padding:45px;text-align:center;color:var(--muted)}.story{padding:75px 0;background:var(--pink-light)}.story-grid{display:grid;grid-template-columns:.9fr 1.1fr;gap:55px;align-items:center}.story-grid>img{width:100%;height:500px;object-fit:cover;border-radius:28px}.story h2{margin-bottom:18px}.story p:not(.eyebrow){margin:0 0 15px;color:var(--muted)}.signature{margin-top:25px;color:var(--pink-dark);font:23px Georgia,serif}.occasion-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}.occasion{height:210px;position:relative;overflow:hidden;border-radius:18px;color:#fff}.occasion img{width:100%;height:100%;object-fit:cover;transition:.4s}.occasion:hover img{transform:scale(1.06)}.occasion:after{content:'';position:absolute;inset:0;background:linear-gradient(transparent 35%,rgba(0,0,0,.65))}.occasion span{position:absolute;z-index:1;bottom:15px;left:16px}.occasion strong{display:block;font:600 21px Georgia,serif}.occasion small{display:block;font-size:11px}.order-panel{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;padding:55px;border-radius:28px;background:var(--pink-dark);color:#fff}.order-panel .eyebrow{color:#ffd4e4}.order-panel h2{margin-bottom:10px}.order-copy>p:not(.eyebrow){max-width:540px;opacity:.88}.light-button{display:inline-block;margin-top:14px;padding:12px 20px;border-radius:999px;background:#fff;color:var(--pink-dark);font-weight:700}.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}.step{padding:20px;border-radius:16px;background:rgba(255,255,255,.12)}.step-number{display:grid;width:31px;height:31px;place-items:center;margin-bottom:13px;border-radius:50%;background:#fff;color:var(--pink-dark);font-weight:800}.step strong,.step small{display:block}.step small{margin-top:5px;font-size:12px;opacity:.82}.reviews{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.review{padding:22px;border:1px solid var(--line);border-radius:18px;background:#fff}.stars{color:var(--gold);letter-spacing:2px}.review p{margin:12px 0;color:var(--muted);font-size:13px}.review strong{font-size:12px}.faq{display:grid;grid-template-columns:1fr 1fr;gap:12px}details{padding:15px 17px;border:1px solid var(--line);border-radius:14px;background:#fff}summary{cursor:pointer;font-weight:700}details p{padding-top:10px;margin:0;color:var(--muted);font-size:13px}footer{padding:55px 0 22px;background:#241a1f;color:#d9cdd2}.footer-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:35px}.footer-grid .footer-logo{display:block;color:#fff}.footer-grid p{max-width:320px;font-size:13px}.footer-grid h4{margin:0 0 13px;color:#fff}.footer-grid a:not(.logo){display:block;margin:8px 0;color:#c7b9c0;font-size:13px}.footer-grid a:hover{color:#fff}.copyright{margin-top:35px;padding-top:18px;border-top:1px solid #45383e;text-align:center;color:#9e8f97;font-size:11px}.floating-whatsapp{position:fixed;right:22px;bottom:22px;z-index:20;display:grid;width:60px;height:60px;place-items:center;border-radius:50%;background:#25d366;color:#fff;box-shadow:0 10px 28px rgba(37,211,102,.35);font-size:27px}
+      @media(max-width:950px){.nav-links{display:none}.nav-links.mobile-open{position:absolute;top:76px;left:0;right:0;display:flex;flex-direction:column;align-items:stretch;gap:0;padding:12px 20px 18px;background:var(--cream);box-shadow:0 10px 25px rgba(0,0,0,.08)}.nav-links.mobile-open a{padding:10px}.menu-button{display:block}.hero-grid,.story-grid,.order-panel{grid-template-columns:1fr}.hero-photo{order:-1}.hero-photo>img{height:430px}.category-grid{grid-template-columns:repeat(3,1fr)}.products{grid-template-columns:repeat(2,1fr)}.occasion-grid{grid-template-columns:repeat(3,1fr)}.footer-grid{grid-template-columns:1.5fr 1fr 1fr}.steps{grid-template-columns:1fr}}
+      @media(max-width:600px){.container{width:calc(100% - 26px)}.topbar{font-size:11px}.nav{min-height:68px}.logo{font-size:23px}.whatsapp-button{padding:10px 13px;font-size:12px}.hero{padding-top:20px}.hero-photo>img{height:340px;border-radius:22px}.hero h1{font-size:45px}.hero-description{font-size:15px}.section{padding:48px 0}.section-heading{display:block}.section-heading>p{margin-top:7px}.category-grid{grid-template-columns:repeat(2,1fr)}.products{grid-template-columns:1fr 1fr;gap:10px}.product-image{height:175px}.product-body{padding:12px}.product-body h3{font-size:18px}.product-body p{font-size:11px}.product-footer{display:block}.product-button{display:block;margin-top:10px;text-align:center}.occasion-grid{grid-template-columns:1fr 1fr}.occasion{height:170px}.story-grid>img{height:340px}.order-panel{padding:32px 20px}.order-panel h2{font-size:34px}.reviews,.faq{grid-template-columns:1fr}.footer-grid{grid-template-columns:1fr 1fr}.search{width:100%;min-width:0;margin-left:0}.filter-list{gap:7px}}
+    `}</style>
+  </>;
 }
