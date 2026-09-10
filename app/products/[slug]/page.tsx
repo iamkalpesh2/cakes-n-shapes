@@ -1,17 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { formatPrice, getProduct } from '../../../lib/catalog';
+import { formatPrice, type Product } from '../../../lib/catalog';
 
 export default function ProductPage({ params }: { params: { slug: string } }) {
-  const product = getProduct(params.slug);
+  const [product, setProduct] = useState<Product | undefined>();
   const router = useRouter();
-  const [selectedSize, setSelectedSize] = useState(product?.sizes[0].label ?? '');
+  const [selectedSize, setSelectedSize] = useState('');
   const [quantity, setQuantity] = useState(1);
 
+  useEffect(() => {
+    fetch(`/api/products/${params.slug}`, { cache: 'no-store' }).then((response) => response.ok ? response.json() : undefined).then((data) => setProduct(data)).catch(() => setProduct(undefined));
+  }, [params.slug]);
+
+  useEffect(() => {
+    if (product) setSelectedSize(product.sizes[0]?.label ?? '');
+  }, [product]);
+
   if (!product) {
-    return <main className="detail-page"><div className="detail-shell"><h1>Product not found</h1><a className="detail-button" href="/#shop">Back to menu</a></div></main>;
+    return <main className="detail-page"><div className="detail-shell"><h1>Loading product...</h1><a className="detail-button" href="/#shop">Back to menu</a></div></main>;
   }
 
   const size = product.sizes.find((option) => option.label === selectedSize) ?? product.sizes[0];

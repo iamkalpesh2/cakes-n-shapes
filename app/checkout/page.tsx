@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useState } from 'react';
-import { formatPrice, getProduct, products, whatsappLink } from '../../lib/catalog';
+import { formatPrice, getProduct, whatsappLink } from '../../lib/catalog';
 
 type CartItem = { slug: string; size: string; quantity: number };
 
@@ -19,14 +19,13 @@ export default function CheckoutPage() {
     localStorage.setItem('cakes-cart', JSON.stringify(next));
   };
 
-  const submitOrder = (event: FormEvent) => {
+  const submitOrder = async (event: FormEvent) => {
     event.preventDefault();
-    const summary = cart.map((item) => {
-      const product = getProduct(item.slug);
-      const size = product?.sizes.find((option) => option.label === item.size);
-      return `${product?.name} (${item.size}) x ${item.quantity} = ${size ? formatPrice(size.price * item.quantity) : ''}`;
-    }).join('\n');
-    const message = `Hi Rinku! I'd like to place an order from Cakes n' Shapes.\n\n${summary}\n\nName: ${customer.name}\nPhone: ${customer.phone}\nRequired date: ${customer.date}\nAddress / pickup: ${customer.address}\nNotes: ${customer.notes || 'None'}`;
+    const response = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customer, items: cart }) });
+    const result = await response.json();
+    if (!response.ok) { window.alert(result.error ?? 'Unable to save your order.'); return; }
+    localStorage.removeItem('cakes-cart');
+    const message = `${result.whatsappMessage}\nName: ${customer.name}\nPhone: ${customer.phone}\nRequired date: ${customer.date}\nAddress / pickup: ${customer.address}\nNotes: ${customer.notes || 'None'}`;
     window.open(`${whatsappLink}?text=${encodeURIComponent(message)}`, '_blank');
   };
 

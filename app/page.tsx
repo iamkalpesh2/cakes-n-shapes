@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { formatPrice, products, type Filter, type Product, whatsappLink } from '../lib/catalog';
+import { useEffect, useState } from 'react';
+import { formatPrice, type Filter, type Product, whatsappLink } from '../lib/catalog';
+import FeedbackSection from './components/FeedbackSection';
 
 const categories: { icon: string; title: string; detail: string; filter: Filter }[] = [
   { icon: '🍰', title: 'All', detail: 'Our full menu', filter: 'all' },
@@ -26,15 +27,18 @@ function ProductCard({ product }: { product: Product }) {
 
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
   const [activeFilter, setActiveFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
+  useEffect(() => {
+    fetch('/api/products', { cache: 'no-store' }).then((response) => response.json()).then((data) => setProducts(Array.isArray(data) ? data : [])).catch(() => setProducts([]));
+  }, []);
   const filteredProducts = products.filter((product) => {
     const searchable = `${product.name} ${product.description} ${product.category}`.toLowerCase();
     return (activeFilter === 'all' || product.category === activeFilter) && searchable.includes(search.toLowerCase().trim());
   });
   const selectFilter = (filter: Filter) => { setActiveFilter(filter); document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
   const navItems = [['shop', 'Shop'], ['occasions', 'Occasions'], ['story', 'Our Story'], ['order', 'How to Order'], ['faq', 'FAQ']];
-  const reviews = ['Beautifully made, personal and perfect for celebrations. The best part is being able to discuss exactly what we want.', 'A home-baked feel with designs made specially for the occasion. Everything feels thoughtful.', 'From choosing the flavour to the final design, the WhatsApp ordering makes the process simple.'];
   const faqs = [["Where is Cakes n' Shapes located?", "Cakes n' Shapes is a home bakery based in Dahisar, Mumbai."], ['How do I place an order?', 'Choose a product on this website and use the WhatsApp button. Discuss the date, flavour, size, design and availability directly.'], ['Can I customise a cake?', 'Yes. Share your theme, reference image, flavour and size requirements on WhatsApp and Rinku can guide you.'], ['Do you make hampers?', 'Yes. Hampers can be explored for birthdays, festivals, thank-you gifting and other occasions.']];
 
   return <>
@@ -47,7 +51,7 @@ export default function Home() {
       <section className="story" id="story"><div className="container story-grid"><img src="https://images.unsplash.com/photo-1559622214-f8a9850965e4?auto=format&fit=crop&w=900&q=85" alt="Home baker preparing a cake" /><div><p className="eyebrow">Our story</p><h2>From a home kitchen to your celebrations.</h2><p>Cakes n&apos; Shapes was started by <strong>Rinku Shah</strong> in 2021 with a simple idea: make beautiful, delicious treats that feel personal.</p><p>It began with cakes shared and sold through Facebook Marketplace and the Cakes n&apos; Shapes Facebook page in Mumbai. Since then, the focus has stayed the same — thoughtful baking, personal service and desserts made especially for your moment.</p><p>Today, we&apos;re a home bakery based in Dahisar, Mumbai, taking orders through WhatsApp so every celebration can be discussed directly with the baker.</p><div className="signature">— Rinku Shah</div></div></div></section>
       <section className="section" id="occasions"><div className="container"><div className="section-heading"><div><p className="eyebrow">Shop by occasion</p><h2>Whatever you&apos;re celebrating</h2></div><p>Choose an occasion and we&apos;ll help you find the right sweet treat or hamper.</p></div><div className="occasion-grid">{occasions.map(([title, detail, image]) => <a key={title} className="occasion" href={messageFor(`Hi Rinku! I'm looking for something from Cakes n' Shapes for a ${title}. Please suggest suitable cakes, treats or hampers.`)} target="_blank" rel="noreferrer"><img src={image} alt="" /><span><strong>{title}</strong><small>{detail}</small></span></a>)}</div></div></section>
       <section className="section" id="order"><div className="container"><div className="order-panel"><div className="order-copy"><p className="eyebrow">Simple ordering</p><h2>See something you love?</h2><p>We keep ordering personal. Browse the menu, choose a product or share your idea, then continue the conversation on WhatsApp with Rinku.</p><a className="light-button" href={messageFor("Hi Rinku! I'm looking to place an order from Cakes n' Shapes.")} target="_blank" rel="noreferrer">Start a WhatsApp chat →</a></div><div className="steps">{[['1', 'Pick a product', 'Browse cakes, treats or hampers.'], ['2', 'Share your details', 'Tell us date, flavour, size & occasion.'], ['3', 'Confirm on WhatsApp', 'Final price and availability are discussed directly.']].map(([number, title, text]) => <div className="step" key={number}><span className="step-number">{number}</span><strong>{title}</strong><small>{text}</small></div>)}</div></div></div></section>
-      <section className="section"><div className="container"><div className="section-heading single"><div><p className="eyebrow">Why Cakes n&apos; Shapes</p><h2>Made with a little more heart.</h2></div></div><div className="reviews">{reviews.map((review) => <div className="review" key={review}><span className="stars">★★★★★</span><p>“{review}”</p><strong>— Cakes n&apos; Shapes customer</strong></div>)}</div></div></section>
+      <section className="section"><div className="container"><div className="section-heading single"><div><p className="eyebrow">Why Cakes n&apos; Shapes</p><h2>Made with a little more heart.</h2></div></div><FeedbackSection /></div></section>
       <section className="section" id="faq"><div className="container"><div className="section-heading single"><div><p className="eyebrow">Need to know</p><h2>Frequently asked questions</h2></div></div><div className="faq">{faqs.map(([question, answer]) => <details key={question}><summary>{question}</summary><p>{answer}</p></details>)}</div></div></section>
     </main>
     <footer><div className="container footer-grid"><div><a className="logo footer-logo" href="#home">Cakes n&apos; Shapes<span>Home Bakery · Mumbai</span></a><p>Custom cakes, cupcakes, jar cakes, brownies, cake popsicles and hampers — baked from a home kitchen in Dahisar, Mumbai.</p></div><div><h4>Explore</h4><a href="#shop">Shop</a><a href="#occasions">Occasions</a><a href="#story">Our Story</a></div><div><h4>Products</h4><a href="#shop">Cakes</a><a href="#shop">Cupcakes</a><a href="#shop">Brownies</a><a href="#shop">Hampers</a></div><div><h4>Contact</h4><a href={whatsappLink} target="_blank" rel="noreferrer">WhatsApp: +91 98696 00561</a><a href="tel:+919869600561">Call us</a><a href="#faq">FAQ</a></div></div><div className="copyright">© 2026 Cakes n&apos; Shapes · Dahisar, Mumbai · Founded by Rinku Shah · All rights reserved.</div></footer>
