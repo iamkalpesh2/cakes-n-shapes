@@ -5,3 +5,79 @@
 html {
   scroll-behavior: smooth;
 }
+
+.detail-loading {
+  min-height: 600px;
+}
+
+.loading-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  align-items: center;
+}
+
+.loading-image,
+.loading-copy span,
+.loading-options span {
+  display: block;
+  background: linear-gradient(100deg, #f1e5e6 30%, #fff6f5 50%, #f1e5e6 70%);
+  background-size: 200% 100%;
+  animation: loading-shimmer 1.4s infinite;
+  border-radius: 14px;
+}
+
+.loading-image {
+  aspect-ratio: 1;
+  border-radius: 24px;
+}
+
+.loading-copy {
+  display: grid;
+  gap: 16px;
+}
+
+.loading-copy span {
+  height: 18px;
+}
+
+.loading-copy span:nth-child(2) {
+  width: 80%;
+  height: 48px;
+}
+
+.loading-copy .loading-short {
+  width: 60%;
+}
+
+.loading-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.loading-options span {
+  height: 70px;
+}
+
+@keyframes loading-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (max-width: 700px) {
+  .loading-grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .detail-loading {
+    min-height: 0;
+  }
+
+  .loading-image {
+    max-height: 360px;
+  }
+}
