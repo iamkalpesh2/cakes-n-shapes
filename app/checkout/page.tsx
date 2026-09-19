@@ -4,17 +4,24 @@ import { FormEvent, useEffect, useState } from "react";
 import { formatPrice, type Product, whatsappLink } from "../../lib/catalog";
 
 type CartItem = { slug: string; size: string; quantity: number };
+type FormErrors = Partial<Record<keyof typeof initialCustomer, string>> & {
+  form?: string;
+};
+
+const initialCustomer = {
+  name: "",
+  phone: "",
+  date: "",
+  address: "",
+  notes: "",
+};
 
 export default function CheckoutPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [customer, setCustomer] = useState({
-    name: "",
-    phone: "",
-    date: "",
-    address: "",
-    notes: "",
-  });
+  const [customer, setCustomer] = useState(initialCustomer);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const getProduct = (slug: string) =>
     products.find((product) => product.slug === slug);
 
@@ -40,14 +47,46 @@ export default function CheckoutPage() {
 
   const submitOrder = async (event: FormEvent) => {
     event.preventDefault();
+    const nextErrors: FormErrors = {};
+    if (customer.name.trim().length < 2)
+      nextErrors.name = "Enter your name (at least 2 characters).";
+    if (
+      !/^[+()\d\s-]{7,20}$/.test(customer.phone.trim()) ||
+      customer.phone.trim().length !== 10
+    )
+      nextErrors.phone = "Enter a valid phone number.";
+    if (!customer.date) nextErrors.date = "Choose your required date.";
+    else if (customer.date < new Date().toISOString().slice(0, 10))
+      nextErrors.date = "Choose today or a future date.";
+    if (customer.address.trim().length < 3)
+      nextErrors.address = "Enter a pickup or delivery address.";
+    if (customer.notes.trim().length > 1000)
+      nextErrors.notes = "Notes must be 1000 characters or fewer.";
+    if (!cart.length) nextErrors.form = "Your cart is empty.";
+    const unavailable = cart.find(
+      (item) =>
+        !getProduct(item.slug)?.sizes.some((size) => size.label === item.size),
+    );
+    if (unavailable)
+      nextErrors.form = `${unavailable.size} is no longer available for this product. Please return to the menu and choose another size.`;
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length) return;
+
+    setIsSubmitting(true);
     const response = await fetch("/api/orders", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ customer, items: cart }),
+      body: JSON.stringify({
+        customer: { ...customer, requiredDate: customer.date },
+        items: cart,
+      }),
     });
     const result = await response.json();
     if (!response.ok) {
-      window.alert(result.error ?? "Unable to save your order.");
+      setErrors({
+        form: result.error ?? "Unable to save your order. Please try again.",
+      });
+      setIsSubmitting(false);
       return;
     }
     localStorage.removeItem("cakes-cart");
@@ -56,6 +95,19 @@ export default function CheckoutPage() {
       `${whatsappLink}?text=${encodeURIComponent(message)}`,
       "_blank",
     );
+    setIsSubmitting(false);
+  };
+
+  const updateCustomer = (
+    field: keyof typeof initialCustomer,
+    value: string,
+  ) => {
+    setCustomer({ ...customer, [field]: value });
+    setErrors((current) => ({
+      ...current,
+      [field]: undefined,
+      form: undefined,
+    }));
   };
 
   const total = cart.reduce((sum, item) => {
@@ -139,62 +191,111 @@ export default function CheckoutPage() {
             </section>
             <form className="customer-form" onSubmit={submitOrder}>
               <h2>Your details</h2>
+              {errors.form && (
+                <p className="form-error" role="alert">
+                  {errors.form}
+                </p>
+              )}
               <label>
                 Name
                 <input
                   required
+                  aria-invalid={Boolean(errors.name)}
+                  aria-describedby={errors.name ? "name-error" : undefined}
                   value={customer.name}
                   onChange={(event) =>
-                    setCustomer({ ...customer, name: event.target.value })
+                    updateCustomer("name", event.target.value)
                   }
                 />
+                {errors.name && (
+                  <small className="field-error" id="name-error">
+                    {errors.name}
+                  </small>
+                )}
               </label>
               <label>
                 Phone / WhatsApp
                 <input
                   required
                   type="tel"
+                  inputMode="tel"
+                  aria-invalid={Boolean(errors.phone)}
+                  aria-describedby={errors.phone ? "phone-error" : undefined}
                   value={customer.phone}
                   onChange={(event) =>
-                    setCustomer({ ...customer, phone: event.target.value })
+                    updateCustomer("phone", event.target.value)
                   }
                 />
+                {errors.phone && (
+                  <small className="field-error" id="phone-error">
+                    {errors.phone}
+                  </small>
+                )}
               </label>
               <label>
                 Required date
                 <input
                   required
                   type="date"
+                  min={new Date().toISOString().slice(0, 10)}
+                  aria-invalid={Boolean(errors.date)}
+                  aria-describedby={errors.date ? "date-error" : undefined}
                   value={customer.date}
                   onChange={(event) =>
-                    setCustomer({ ...customer, date: event.target.value })
+                    updateCustomer("date", event.target.value)
                   }
                 />
+                {errors.date && (
+                  <small className="field-error" id="date-error">
+                    {errors.date}
+                  </small>
+                )}
               </label>
               <label>
                 Pickup or delivery address
                 <textarea
                   required
                   rows={3}
+                  aria-invalid={Boolean(errors.address)}
+                  aria-describedby={
+                    errors.address ? "address-error" : undefined
+                  }
                   value={customer.address}
                   onChange={(event) =>
-                    setCustomer({ ...customer, address: event.target.value })
+                    updateCustomer("address", event.target.value)
                   }
                 />
+                {errors.address && (
+                  <small className="field-error" id="address-error">
+                    {errors.address}
+                  </small>
+                )}
               </label>
               <label>
                 Notes <span>(optional)</span>
                 <textarea
                   rows={3}
+                  maxLength={1000}
+                  aria-invalid={Boolean(errors.notes)}
+                  aria-describedby={errors.notes ? "notes-error" : undefined}
                   value={customer.notes}
                   onChange={(event) =>
-                    setCustomer({ ...customer, notes: event.target.value })
+                    updateCustomer("notes", event.target.value)
                   }
                   placeholder="Flavour, message, theme, delivery timing..."
                 />
+                {errors.notes && (
+                  <small className="field-error" id="notes-error">
+                    {errors.notes}
+                  </small>
+                )}
               </label>
-              <button className="checkout-button" type="submit">
-                Confirm on WhatsApp →
+              <button
+                className="checkout-button"
+                type="submit"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Sending order..." : "Confirm on WhatsApp →"}
               </button>
             </form>
           </div>
@@ -315,6 +416,18 @@ export default function CheckoutPage() {
         .customer-form h2 {
           margin-bottom: 4px;
         }
+        .form-error,
+        .field-error {
+          color: #a32929;
+        }
+        .form-error {
+          margin: 0;
+          padding: 10px 12px;
+          border-radius: 9px;
+          background: #fff0f0;
+          font-size: 13px;
+          font-weight: 700;
+        }
         .customer-form label {
           display: grid;
           gap: 5px;
@@ -324,6 +437,10 @@ export default function CheckoutPage() {
         .customer-form label span {
           color: #756b70;
           font-weight: 400;
+        }
+        .field-error {
+          font-size: 12px;
+          font-weight: 600;
         }
         .customer-form input,
         .customer-form textarea {
@@ -340,6 +457,11 @@ export default function CheckoutPage() {
           outline: 2px solid #f6e7ed;
           border-color: #7b3154;
         }
+        .customer-form input[aria-invalid="true"],
+        .customer-form textarea[aria-invalid="true"] {
+          border-color: #c44;
+          background: #fff8f8;
+        }
         .checkout-button {
           display: inline-block;
           padding: 13px 20px;
@@ -353,6 +475,10 @@ export default function CheckoutPage() {
         }
         .checkout-button:hover {
           background: #642742;
+        }
+        .checkout-button:disabled {
+          opacity: 0.6;
+          cursor: wait;
         }
         .empty-cart {
           padding: 45px;
