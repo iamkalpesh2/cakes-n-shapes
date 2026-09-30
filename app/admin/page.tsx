@@ -23,9 +23,17 @@ type Order = {
   customer_name: string;
   customer_phone: string;
   required_date: string;
+  delivery_address: string;
+  notes: string | null;
+  created_at: string;
   status: string;
   total_minor: number;
-  order_items: { product_name: string; size_label: string; quantity: number }[];
+  order_items: {
+    product_name: string;
+    size_label: string;
+    unit_price_minor: number;
+    quantity: number;
+  }[];
 };
 type Feedback = {
   id: string;
@@ -573,7 +581,7 @@ export default function AdminPage() {
                   {orders.length ? (
                     orders.map((order) => (
                       <div className="admin-row" key={order.id}>
-                        <div>
+                        <div className="order-main">
                           <strong>
                             {order.reference} · {order.customer_name}
                           </strong>
@@ -584,10 +592,39 @@ export default function AdminPage() {
                             {order.order_items
                               ?.map(
                                 (item) =>
-                                  `${item.product_name} (${item.size_label}) × ${item.quantity}`,
+                                  `${item.product_name} (${item.size_label}) × ${item.quantity} · ${formatPrice(item.unit_price_minor * item.quantity)}`,
                               )
                               .join(" · ")}
                           </div>
+                          <details className="order-details">
+                            <summary>More details</summary>
+                            <dl>
+                              <div>
+                                <dt>Address / pickup</dt>
+                                <dd>
+                                  {order.delivery_address.split(/\nMap:\s*https?:\/\/\S+/)[0] || "Not provided"}
+                                </dd>
+                              </div>
+                              {order.delivery_address.match(/Map:\s*(https?:\/\/\S+)/)?.[1] && (
+                                <div>
+                                  <dt>Location</dt>
+                                  <dd>
+                                    <a href={order.delivery_address.match(/Map:\s*(https?:\/\/\S+)/)?.[1]} target="_blank" rel="noreferrer">
+                                      Open in Google Maps
+                                    </a>
+                                  </dd>
+                                </div>
+                              )}
+                              <div>
+                                <dt>Notes</dt>
+                                <dd>{order.notes?.trim() || "None"}</dd>
+                              </div>
+                              <div>
+                                <dt>Placed</dt>
+                                <dd>{new Date(order.created_at).toLocaleString()}</dd>
+                              </div>
+                            </dl>
+                          </details>
                         </div>
                         <div className="row-actions">
                           <strong>{formatPrice(order.total_minor)}</strong>
@@ -936,6 +973,43 @@ function AdminStyles() {
         margin: 6px 0 0;
         color: #756b70;
         font-size: 13px;
+      }
+      .order-main {
+        min-width: 0;
+      }
+      .order-details {
+        margin-top: 10px;
+        color: #2e2428;
+        font-size: 12px;
+      }
+      .order-details summary {
+        width: max-content;
+        color: #7b3154;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .order-details dl {
+        display: grid;
+        gap: 9px;
+        margin: 10px 0 0;
+        padding: 12px;
+        border-radius: 9px;
+        background: #fffaf7;
+      }
+      .order-details dt {
+        color: #756b70;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .order-details dd {
+        margin: 2px 0 0;
+        overflow-wrap: anywhere;
+      }
+      .order-details a {
+        color: #7b3154;
+        font-weight: 700;
+        text-decoration: underline;
+        text-underline-offset: 2px;
       }
       .row-actions {
         display: flex;

@@ -22,6 +22,9 @@ export default function CheckoutPage() {
   const [customer, setCustomer] = useState(initialCustomer);
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+  const [locationMessage, setLocationMessage] = useState("");
+  const [mapUrl, setMapUrl] = useState("");
   const getProduct = (slug: string) =>
     products.find((product) => product.slug === slug);
 
@@ -108,6 +111,58 @@ export default function CheckoutPage() {
       [field]: undefined,
       form: undefined,
     }));
+  };
+
+  const detectLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationMessage("Location detection is not supported by this browser.");
+      return;
+    }
+
+    setIsDetectingLocation(true);
+    setLocationMessage("Finding your location...");
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        const { latitude, longitude } = coords;
+        const mapsLink = `https://maps.google.com/?q=${latitude},${longitude}`;
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(latitude)}&lon=${encodeURIComponent(longitude)}`,
+          );
+          if (!response.ok) throw new Error("Address lookup failed");
+          const result = await response.json();
+          const parts = result.address ?? {};
+          const street = [parts.house_number, parts.road].filter(Boolean).join(" ");
+          const locality = parts.neighbourhood ?? parts.suburb ?? parts.village;
+          const city = parts.city ?? parts.town ?? parts.municipality ?? parts.county;
+          const address = [street, locality, city, parts.state, parts.postcode]
+            .filter(Boolean)
+            .filter((part, index, values) => values.indexOf(part) === index)
+            .join(", ") || result.display_name;
+
+          if (!address) throw new Error("No street address found");
+          const addressWithMap = `${address}\nMap: ${mapsLink}`;
+          setMapUrl(mapsLink);
+          setCustomer((current) => ({ ...current, address: addressWithMap }));
+          setErrors((current) => ({ ...current, address: undefined }));
+          setLocationMessage("Address detected. You can edit it before submitting.");
+        } catch {
+          setLocationMessage("We found your coordinates but couldn't look up the address. Please enter it manually.");
+        } finally {
+          setIsDetectingLocation(false);
+        }
+      },
+      (error) => {
+        const message = error.code === error.PERMISSION_DENIED
+          ? "Location permission was denied. Enter your address manually or allow location access."
+          : error.code === error.TIMEOUT
+            ? "Location detection timed out. Please try again or enter your address manually."
+            : "Unable to detect your location. Please enter your address manually.";
+        setLocationMessage(message);
+        setIsDetectingLocation(false);
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
+    );
   };
 
   const total = cart.reduce((sum, item) => {
@@ -265,6 +320,24 @@ export default function CheckoutPage() {
                     updateCustomer("address", event.target.value)
                   }
                 />
+                <button
+                  className="location-button"
+                  type="button"
+                  onClick={detectLocation}
+                  disabled={isDetectingLocation}
+                >
+                  {isDetectingLocation ? "Detecting location..." : "📍 Detect My Location"}
+                </button>
+                {locationMessage && (
+                  <small className="location-message" role="status">
+                    {locationMessage}
+                  </small>
+                )}
+                {mapUrl && (
+                  <a className="location-map-link" href={mapUrl} target="_blank" rel="noreferrer">
+                    Open detected location in Google Maps
+                  </a>
+                )}
                 {errors.address && (
                   <small className="field-error" id="address-error">
                     {errors.address}
@@ -451,6 +524,32 @@ export default function CheckoutPage() {
           background: #fffaf7;
           color: #2e2428;
           resize: vertical;
+        }
+        .location-button {
+          justify-self: start;
+          padding: 9px 12px;
+          border: 1px solid #eadde2;
+          border-radius: 9px;
+          background: #fff;
+          color: #7b3154;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .location-button:disabled {
+          opacity: 0.65;
+          cursor: wait;
+        }
+        .location-message {
+          color: #756b70;
+          font-size: 12px;
+          font-weight: 400;
+        }
+        .location-map-link {
+          color: #7b3154;
+          font-size: 12px;
+          font-weight: 700;
+          text-decoration: underline;
+          text-underline-offset: 2px;
         }
         .customer-form input:focus,
         .customer-form textarea:focus {
